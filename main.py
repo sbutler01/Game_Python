@@ -29,6 +29,7 @@ size_enemy = 25
 size_bonus = 10
 size_bullet = 5
 size_loadbar = 1
+size_bonusbar = 1
 
 speed_enemy = 10
 speed_framerate = 30
@@ -39,6 +40,11 @@ speed_bullet = 20
 position_player = [(width - size_player[0])/2, height - (2 * size_player[1])]
 position_enemy = [random.randint(0,width-(2*size_enemy)), 0]
 position_loadbar = [25, height-50]
+position_bonusbar = [200, height-50]
+
+#for the multibullet thingy
+x_bullet = 0
+count = 0
 
 list_enemy = [position_enemy]
 list_bonus = []
@@ -53,6 +59,7 @@ score = 0
 font_score = pygame.font.SysFont("monospace", 25)
 loadbar_load = False
 loadbar_finish = True
+bonusbar_finish = False
 
 ##example of a loop that runs the game
 #while not gameover:
@@ -108,6 +115,12 @@ def drop_bullet(list_bullet):
   y_bullet = position_player[1]
   list_bullet.append([x_bullet, y_bullet])
 
+def drop_bullet_2(list_bullet):
+  x_bullet = position_player[0]+20
+  y_bullet = position_player[1]
+  for i in list(range(1,4)):
+    list_bullet.append([x_bullet, y_bullet])
+
 #moves bullet
 def move_bullet(list_bullet):
   for idx, position_bullet in enumerate(list_bullet):
@@ -118,6 +131,38 @@ def move_bullet(list_bullet):
     else:
       list_bullet.pop(idx)
 
+def move_bullet_2(list_bullet, x_bullet, count):
+  for idx, position_bullet in enumerate(list_bullet):
+    #move the enemy 
+
+    if position_bullet[1] < 0 or position_bullet[0] >= width or position_bullet[0] <= 0:
+      list_bullet.pop(idx)
+
+    elif idx == 0 and count <= 2:
+      position_bullet[1] -= speed_bullet
+
+    elif idx == 1 and count <= 2:
+      position_bullet[0] -= speed_bullet*math.sqrt(2)/2
+      position_bullet[1] -= speed_bullet*math.sqrt(2)/2
+
+    elif idx == 2 and count <= 2:
+      position_bullet[0] += speed_bullet*math.sqrt(2)/2
+      position_bullet[1] -= speed_bullet*math.sqrt(2)/2
+
+    elif position_bullet[0] == x_bullet:
+      position_bullet[1] -= speed_bullet
+
+    elif position_bullet[0] < x_bullet:
+      position_bullet[0] -= speed_bullet*math.sqrt(2)/2
+      position_bullet[1] -= speed_bullet*math.sqrt(2)/2
+
+    elif position_bullet[0] > x_bullet:
+      position_bullet[0] += speed_bullet*math.sqrt(2)/2
+      position_bullet[1] -= speed_bullet*math.sqrt(2)/2
+
+    count += 1
+  return(count)
+
 #designs bonus appearance
 def draw_bullet(list_bullet):
   for position_bullet in list_bullet:
@@ -127,6 +172,9 @@ def draw_bullet(list_bullet):
 
 def draw_loadbar(length_loadbar, outline):
   pygame.draw.rect(screen, color_white, (position_loadbar[0], position_loadbar[1], length_loadbar, 30), outline)
+
+def draw_bonusbar(length_bonusbar, outline):
+  pygame.draw.rect(screen, color_green, (position_bonusbar[0], position_bonusbar[1], length_bonusbar, 30), outline)
 
 #detects whether two objects are touching
 def detect_collision(pos_player, pos_enemy, size_player, size_enemy):
@@ -204,8 +252,15 @@ while not gameover:
 
       if event.type == pygame.KEYDOWN:
 
-        if event.key == pygame.K_SPACE and loadbar_finish: #exit the game if you press the 'x'
+        if event.key == pygame.K_SPACE and loadbar_finish and bonusbar_finish is False: #exit the game if you press the 'x'
           drop_bullet(list_bullet)
+          loadbar_load = True
+          loadbar_finish = False
+
+        if event.key == pygame.K_SPACE and loadbar_finish and bonusbar_finish: #exit the game if you press the 'x'
+          count = 0
+          x_bullet = position_player[0]+20
+          drop_bullet_2(list_bullet)
           loadbar_load = True
           loadbar_finish = False
 
@@ -239,19 +294,36 @@ while not gameover:
     score = move_enemies(list_enemy, score)
 
     #apply bonus functions
+    score_prebonus = score
     drop_bonus(list_bonus, speed_spawn_bonus/(3 * len(list_bonus) + 1))
     draw_bonus(list_bonus)
     score = detect_collision_bonus(position_player, list_bonus, score, size_player, size_bonus)
 
+    if size_bonusbar >= 150:
+      bonusbar_finish = True
+
+    if score_prebonus != score and bonusbar_finish is False:
+      size_bonusbar += 30
+
     draw_bullet(list_bullet)
-    move_bullet(list_bullet)
+
+    if bonusbar_finish is False:
+      move_bullet(list_bullet)
+
+    elif bonusbar_finish:
+      count = move_bullet_2(list_bullet, x_bullet, count)
+
     score = detect_collision_bullet(list_bullet, list_enemy, score)
 
-    draw_loadbar(150, 1)
+    draw_loadbar(150,1)
     if loadbar_load:
       size_loadbar += 5
     
     draw_loadbar(size_loadbar,0)
+
+    draw_bonusbar(150,1)
+
+    draw_bonusbar(size_bonusbar,0)
 
     if size_loadbar >= 150:
       loadbar_load = False
@@ -277,11 +349,4 @@ while not gameover:
 #to do
 #make it so list empties when bar is full, not when it goes off screen
 #turn shot into three-prong after number of bonuses
-
-
-
-
-
-
-
 
